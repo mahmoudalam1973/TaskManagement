@@ -1,0 +1,312 @@
+﻿@model CreateTaskViewModel
+
+@{
+    ViewData["Title"] = "Task Manager";
+    ViewData["ActivePage"] = "tasks";
+    var tasks = ViewBag.Tasks as IEnumerable<TaskItem> ?? Enumerable.Empty<TaskItem>();
+    int pending = tasks.Count(t => t.Status == TaskItemStatus.Pending);
+    int inProgress = tasks.Count(t => t.Status == TaskItemStatus.InProgress);
+    int completed = tasks.Count(t => t.Status == TaskItemStatus.Completed);
+}
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-warning">
+            <div class="inner">
+                <h3>@pending</h3>
+                <p>Pending Tasks</p>
+            </div>
+            <div class="icon"><i class="fas fa-hourglass-half"></i></div>
+            <a href="#tasks-table" class="small-box-footer">View <i class="fas fa-arrow-circle-right"></i></a>
+        </div>
+    </div>
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-info">
+            <div class="inner">
+                <h3>@inProgress</h3>
+                <p>In Progress</p>
+            </div>
+            <div class="icon"><i class="fas fa-spinner fa-spin-slow"></i></div>
+            <a href="#tasks-table" class="small-box-footer">View <i class="fas fa-arrow-circle-right"></i></a>
+        </div>
+    </div>
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-success">
+            <div class="inner">
+                <h3>@completed</h3>
+                <p>Completed</p>
+            </div>
+            <div class="icon"><i class="fas fa-check-double"></i></div>
+            <a href="#tasks-table" class="small-box-footer">View <i class="fas fa-arrow-circle-right"></i></a>
+        </div>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="ti ti-check"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="ti ti-alert-circle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div id="toast-container"></div>
+
+<div class="row">
+    <!-- ─── Create Task Form ─── -->
+    <div class="col-lg-4">
+        <div class="card card-primary card-outline">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-plus-circle mr-1"></i> New Task
+                </h3>
+            </div>
+
+            <form asp-action="Create" asp-controller="Tasks" method="post" enctype="multipart/form-data" id="createTaskForm" novalidate>
+                @Html.AntiForgeryToken()
+                <div class="card-body">
+
+                    @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong><i class="fas fa-exclamation-triangle mr-1"></i>Please fix the errors below.</strong>
+                            <button type="button" class="close" data-bs-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                            <ul class="mb-0 mt-1 small">
+                                @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                                {
+                                    <li>@err.ErrorMessage</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <!-- Title -->
+                    <div class="form-group">
+                        <label asp-for="Title">Title <span class="text-danger">*</span></label>
+                        <input asp-for="Title" class="form-control @(ViewData.ModelState["Title"]?.Errors.Any() == true ? "is-invalid" : "")"
+                               placeholder="e.g. Fix login bug" />
+                        <span asp-validation-for="Title" class="invalid-feedback"></span>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label asp-for="Description">Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="3"
+                                  placeholder="Optional details about this task..."></textarea>
+                        <span asp-validation-for="Description" class="invalid-feedback"></span>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="form-group">
+                        <label asp-for="Status">Status <span class="text-danger">*</span></label>
+                        <select asp-for="Status" class="form-control form-select"
+                                asp-items="Html.GetEnumSelectList<TaskItemStatus>()" required>
+                            <option selected value="">-- Select Status --</option>
+                        </select>
+                        <span asp-validation-for="Status" class="text-danger"></span>
+                    </div>
+
+                    <!-- Attachment -->
+                    <div class="form-group">
+                        <label asp-for="Attachment">
+                            Attachment
+                            <small class="text-muted">(Image or PDF, max 10 MB)</small>
+                        </label>
+                        <div class="custom-file">
+                            <input asp-for="Attachment" type="file" class="custom-file-input"
+                                   id="attachmentInput"
+                                   accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" required />
+                            @*<label class="custom-file-label" for="attachmentInput">Choose file…</label>*@
+                        </div>
+                        <span asp-validation-for="Attachment" class="text-danger small"></span>
+                    </div>
+
+                </div>
+
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+                        <i class="fas fa-save mr-1"></i> Create Task
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ─── Task Table ─── -->
+    <div class="col-lg-8" id="tasks-table">
+        <div class="card card-outline card-secondary">
+            <div class="card-header d-flex align-items-center">
+                <h3 class="card-title">
+                    <i class="fas fa-list-ul m-1"></i> All Tasks
+                </h3>
+                @*<div class="ml-auto d-flex align-items-center">
+                    <input type="text" id="tableSearch" class="form-control form-control-sm"
+                           placeholder="&#xf002; Search…" style="width:180px; font-family:'DM Sans',sans-serif;" />
+                </div>*@
+            </div>
+
+            <div class="card-body p-0">
+                @if (!tasks.Any())
+                {
+                    <div class="empty-state py-5 text-center">
+                        <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
+                        <p class="text-muted">No tasks yet. Create your first task!</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0" id="tasksTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width:40px">#</th>
+                                    <th>Title</th>
+                                    <th style="width:120px">Status</th>
+                                    <th style="width:90px">File</th>
+                                    <th style="width:130px">Created</th>
+                                    <th style="width:80px" class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var task in tasks)
+                                {
+                                    <tr id="task-row-@task.Id" class="task-row" data-title="@task.Title.ToLower()">
+                                        <td class="text-muted small align-middle">@task.Id</td>
+                                        <td class="align-middle">
+                                            <div class="task-title font-weight-bold">@task.Title</div>
+                                            @if (!string.IsNullOrEmpty(task.Description))
+                                            {
+                                                <small class="text-muted task-desc">@task.Description</small>
+                                            }
+                                        </td>
+                                        <td class="align-middle">
+                                            @{
+                                                var (badge, icon) = task.Status switch
+                                                {
+                                                    TaskItemStatus.Pending => ("badge-warning", "fa-hourglass-half"),
+                                                    TaskItemStatus.InProgress => ("badge-info", "fa-spinner"),
+                                                    TaskItemStatus.Completed => ("badge-success", "fa-check-circle"),
+                                                    _ => ("badge-secondary", "fa-question")
+                                                };
+                                                var label = task.Status switch
+                                                {
+                                                    TaskItemStatus.Pending => "Pending",
+                                                    TaskItemStatus.InProgress => "In Progress",
+                                                    TaskItemStatus.Completed => "Completed",
+                                                    _ => task.Status.ToString()
+                                                };
+                                            }
+                                            <span class="badge @badge badge-status">
+                                                <i class="fas @icon m-1"></i>@label
+                                            </span>
+                                        </td>
+                                        <td class="align-middle">
+                                            @if (!string.IsNullOrEmpty(task.StoredFileName))
+                                            {
+                                                var isImage = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }
+                                                .Contains(task.StoredFileName.ToLower());
+                                                // .Contains(Path.GetExtension(task.StoredFileName).ToLower());
+                                                <a href="/Tasks/Download/@task.Id"
+                                                   class="btn btn-xs btn-@(isImage ? "info" : "danger") file-btn"
+                                                   title="@task.FileName" download>
+                                                    <i class="fas @(isImage ? "fa-image" : "fa-file-pdf") m-1"></i>
+                                                    @(isImage ? "Image" : "PDF")
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">—</span>
+                                            }
+                                        </td>
+                                        <td class="align-middle text-muted small">
+                                            @task.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                                            <br /><span class="xsmall">@task.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <button type="button"
+                                                    class="btn btn-xs btn-danger btn-delete"
+                                                    data-task-id="@task.Id"
+                                                    data-task-title="@task.Title"
+                                                    title="Delete task">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="card-footer text-muted small">
+                Showing <span id="rowCount">@tasks.Count()</span> task(s)
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Delete Confirmation Modal ─── -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="fas fa-exclamation-triangle m-2"></i>Confirm Deletion
+                </h5>
+                <button type="button" class="close text-white" data-bs-dismiss="modal">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the task:</p>
+                <blockquote class="blockquote-sm bg-light p-2 rounded">
+                    <strong id="deleteTaskTitle"></strong>
+                </blockquote>
+                <p class="text-danger mb-0 small">
+                    <i class="fas fa-info-circle m-1"></i>
+                    This action cannot be undone. Any attached file will also be removed.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times m-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash-alt m-1"></i>Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Pass server-side stats to JS for sidebar
+        window.TASK_STATS = {
+            pending:    @pending,
+            inProgress: @inProgress,
+            completed:  @completed
+        };
+
+        @if (TempData["Success"] != null)
+        {
+                                                <text>
+                                                $(document).ready(function() {
+                                                    showToast('@Html.Raw(TempData["Success"]?.ToString()?.Replace("'", "\\'"))', 'success');
+                                                });
+                                                </text>
+        }
+    </script>
+}
