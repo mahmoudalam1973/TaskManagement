@@ -86,16 +86,6 @@ dotnet run
 
 ---
 
-## 📸 Screenshots
-
-> _Add your screenshots here after running the project._
-
-| Dashboard | Create Task | Delete Confirmation |
-|-----------|-------------|---------------------|
-| ![dashboard]() | ![create]() | ![delete]() |
-
----
-
 ## ⚙️ Configuration
 
 The `appsettings.json` file contains basic logging configuration. No connection string is needed for the default In-Memory setup.
