@@ -215,8 +215,8 @@
                                             @if (!string.IsNullOrEmpty(task.StoredFileName))
                                             {
                                                 var isImage = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }
-                                                .Contains(task.StoredFileName.ToLower());
-                                                // .Contains(Path.GetExtension(task.StoredFileName).ToLower());
+                                                //.Contains(task.StoredFileName.ToLower());
+                                                .Contains(System.IO.Path.GetExtension(task.StoredFileName).ToLower());
                                                 <a href="/Tasks/Download/@task.Id"
                                                    class="btn btn-xs btn-@(isImage ? "info" : "danger") file-btn"
                                                    title="@task.FileName" download>
@@ -302,11 +302,11 @@
 
         @if (TempData["Success"] != null)
         {
-                                                <text>
-                                                $(document).ready(function() {
-                                                    showToast('@Html.Raw(TempData["Success"]?.ToString()?.Replace("'", "\\'"))', 'success');
-                                                });
-                                                </text>
+                                                            <text>
+                                                            $(document).ready(function() {
+                                                                showToast('@Html.Raw(TempData["Success"]?.ToString()?.Replace("'", "\\'"))', 'success');
+                                                            });
+                                                            </text>
         }
     </script>
 }
