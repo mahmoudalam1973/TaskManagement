@@ -1,12 +1,6 @@
 ﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
 // for details on configuring this project to bundle and minify static web assets.
 
-/* ============================================================
-   TaskFlow – site.js
-   AJAX delete, toast notifications, file input enhancement,
-   live search, sidebar stats
-   ============================================================ */
-
 $(function () {
 
     /* ── Update sidebar quick-stats ── */
@@ -73,6 +67,7 @@ $(function () {
                         updateEmptyState();
                     }, 420);
                     showToast(res.message, 'success');
+                    setTimeout(function () { window.location.reload(); }, 2000);
                 } else {
                     showToast(res.message || 'Could not delete task.', 'error');
                 }

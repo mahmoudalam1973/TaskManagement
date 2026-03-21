@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Services\" />
     <Folder Include="Views\Tasks\Download\" />
     <Folder Include="wwwroot\uploads\" />
   </ItemGroup>

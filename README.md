@@ -112,12 +112,27 @@ The `appsettings.json` file contains basic logging configuration. No connection 
 1. Install the EF Core SQL Server package:
    ```bash
    dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+   dotnet add package Microsoft.EntityFrameworkCore.Tools
    ```
 
 2. Update `appsettings.json`:
+
+// Common connection string variants:
+// Local SQL Server instance
+// Server=.;Database=TasksDb;Trusted_Connection=True;TrustServerCertificate=True;
+
+// Named instance
+// Server=.\SQLEXPRESS;Database=TasksDb;Trusted_Connection=True;TrustServerCertificate=True;
+
+// With username & password
+// Server=.;Database=TasksDb;User Id=sa;Password=YourPassword;TrustServerCertificate=True;
+
+// Remote server
+// Server=192.168.1.100,1433;Database=TasksDb;User Id=sa;Password=YourPassword;TrustServerCertificate=True;
+
    ```json
    "ConnectionStrings": {
-     "DefaultConnection": "Server=.;Database=TasksDb;Trusted_Connection=True;TrustServerCertificate=True;"
+     "DefaultConnection": "Server=.\SQLEXPRESS;Database=TaskManagementDb;Trusted_Connection=True;TrustServerCertificate=True;"
    }
    ```
 
